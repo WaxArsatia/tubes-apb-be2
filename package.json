@@ -6,7 +6,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun run test:unit && bun run contract:check && bun run test:integration",
     "test:unit": "NODE_ENV=test bun test tests/unit",
-    "test:integration": "NODE_ENV=test AUTO_MIGRATE=true DATABASE_URL=postgres://finu:finu@localhost:5433/finu bun test tests/integration/auth.test.ts && NODE_ENV=test AUTO_MIGRATE=true DATABASE_URL=postgres://finu:finu@localhost:5433/finu bun test tests/integration/protected-error.test.ts && NODE_ENV=test AUTO_MIGRATE=true DATABASE_URL=postgres://finu:finu@localhost:5433/finu bun test tests/integration/categories-finance.test.ts && NODE_ENV=test AUTO_MIGRATE=true DATABASE_URL=postgres://finu:finu@localhost:5433/finu bun test tests/integration/profile-activities.test.ts",
+    "test:integration": "NODE_ENV=test AUTO_MIGRATE=true DATABASE_URL=postgres://finu:finu@localhost:5433/finu bun test tests/integration/auth.test.ts && NODE_ENV=test AUTO_MIGRATE=true DATABASE_URL=postgres://finu:finu@localhost:5433/finu bun test tests/integration/protected-error.test.ts && NODE_ENV=test AUTO_MIGRATE=true DATABASE_URL=postgres://finu:finu@localhost:5433/finu bun test tests/integration/categories-finance.test.ts && NODE_ENV=test AUTO_MIGRATE=true DATABASE_URL=postgres://finu:finu@localhost:5433/finu bun test tests/integration/profile-activities.test.ts && NODE_ENV=test AUTO_MIGRATE=true DATABASE_URL=postgres://finu:finu@localhost:5433/finu bun test tests/integration/demo-seed.test.ts",
     "contract:check": "bun run scripts/check-openapi-contract.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"

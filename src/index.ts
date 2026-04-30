@@ -1,12 +1,14 @@
 import { createApp } from './app'
 import { loadConfig } from './config'
 import { ensureSchema, pingDatabase } from './db/client'
+import { ensureDemoSeed } from './db/seed'
 
 const config = loadConfig()
 
 if (config.autoMigrate) {
   await ensureSchema()
 }
+await ensureDemoSeed(config)
 
 const app = createApp(config)
 
