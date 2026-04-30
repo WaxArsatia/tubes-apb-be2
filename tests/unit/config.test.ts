@@ -33,18 +33,4 @@ describe('config validation', () => {
     expect(config.nodeEnv).toBe('production')
     expect(config.publicBaseUrl).toBe('https://api.example.com')
   })
-
-  test('enables demo seed by default outside production', () => {
-    expect(loadConfig({ NODE_ENV: 'development' }).demoSeedEnabled).toBe(true)
-    expect(loadConfig({ NODE_ENV: 'test' }).demoSeedEnabled).toBe(true)
-  })
-
-  test('disables demo seed by default in production', () => {
-    expect(loadConfig(completeProductionEnv).demoSeedEnabled).toBe(false)
-  })
-
-  test('allows explicit demo seed override', () => {
-    expect(loadConfig({ NODE_ENV: 'development', DEMO_SEED_ENABLED: 'false' }).demoSeedEnabled).toBe(false)
-    expect(loadConfig({ ...completeProductionEnv, DEMO_SEED_ENABLED: 'true' }).demoSeedEnabled).toBe(true)
-  })
 })

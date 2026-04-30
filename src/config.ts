@@ -14,7 +14,6 @@ const envSchema = z.object({
   UPLOAD_DIR: z.string().default('uploads'),
   PUBLIC_BASE_URL: z.string().default('http://localhost:3000'),
   AUTO_MIGRATE: z.string().default('true'),
-  DEMO_SEED_ENABLED: z.string().optional(),
 })
 
 export type Config = ReturnType<typeof loadConfig>
@@ -26,7 +25,6 @@ const devRefreshSecret = 'dev-refresh-secret-change-me'
 export function loadConfig(source: RawEnv = process.env) {
   const env = envSchema.parse(source)
   const isProduction = env.NODE_ENV === 'production'
-  const demoSeedEnabled = env.DEMO_SEED_ENABLED ? env.DEMO_SEED_ENABLED === 'true' : !isProduction
 
   if (isProduction) {
     const issues: string[] = []
@@ -63,6 +61,5 @@ export function loadConfig(source: RawEnv = process.env) {
     uploadDir: env.UPLOAD_DIR,
     publicBaseUrl: env.PUBLIC_BASE_URL.replace(/\/$/, ''),
     autoMigrate: env.AUTO_MIGRATE === 'true',
-    demoSeedEnabled,
   }
 }

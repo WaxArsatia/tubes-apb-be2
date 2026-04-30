@@ -1,11 +1,8 @@
-import type { Config } from '../config'
 import { findUserByEmail, hashValue } from '../modules/auth/service'
 import { sql } from './client'
 
 export const demoSeedEmail = 'demo@finu.local'
 export const demoSeedPassword = 'password123'
-
-type SeedConfig = Pick<Config, 'demoSeedEnabled'>
 
 const expenseCategories = [
   { key: 'groceries', name: 'Groceries', iconKey: 'shopping-cart', monthlyBudget: 2_500_000 },
@@ -43,8 +40,7 @@ const transactions = [
   { categoryKey: 'transport', name: 'Ride Hailing', amount: 135_000, date: '2026-04-27', note: 'Late-night ride home' },
 ] as const
 
-export async function ensureDemoSeed(config: SeedConfig) {
-  if (!config.demoSeedEnabled) return
+export async function ensureDemoSeed() {
   if (await findUserByEmail(demoSeedEmail)) return
 
   const passwordHash = await hashValue(demoSeedPassword)

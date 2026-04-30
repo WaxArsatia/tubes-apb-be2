@@ -2,15 +2,11 @@
 
 ## Goal
 
-Create a public-demo-ready account with full dummy financial data automatically on application boot when demo seeding is enabled. The seed must be safe to rerun and must not create duplicate demo data.
+Create a public-demo-ready account with full dummy financial data automatically on every application boot. The seed must be safe to rerun and must not create duplicate demo data.
 
 ## Configuration
 
-Add a `DEMO_SEED_ENABLED` environment option.
-
-- In non-production environments, demo seeding defaults to enabled.
-- In production, demo seeding defaults to disabled unless explicitly set to `true`.
-- The parsed value is exposed on `Config` as `demoSeedEnabled`.
+No environment gate controls demo seeding. The demo account is always ensured on boot in every environment, including production.
 
 ## Demo Credentials
 
@@ -27,7 +23,7 @@ The application boot sequence remains migration-first:
 
 1. Load config.
 2. Run `ensureSchema()` when `AUTO_MIGRATE=true`.
-3. Run `ensureDemoSeed(config)` when `demoSeedEnabled=true`.
+3. Run `ensureDemoSeed()`.
 4. Create and export the Hono app.
 
 This keeps the seed dependent on an up-to-date schema and avoids seeding before tables exist.
@@ -58,7 +54,7 @@ This avoids duplicate categories and records on every boot, and it avoids partia
 Add a focused seed module, `src/db/seed.ts`, with:
 
 - Exported constants for the demo email and password.
-- An exported `ensureDemoSeed(config: Config)` function.
+- An exported `ensureDemoSeed()` function.
 - Local data arrays for categories, income, savings, and transactions.
 
 Use the existing `sql` tagged template and `hashValue()` helper so password handling matches normal registration.
@@ -68,9 +64,7 @@ Use the existing `sql` tagged template and `hashValue()` helper so password hand
 Add integration coverage that:
 
 - Resets and migrates the test database.
-- Runs `ensureDemoSeed()` with demo seeding enabled.
+- Runs `ensureDemoSeed()`.
 - Verifies login works with the public credentials.
 - Verifies categories, transactions, savings, and recent activity have data.
 - Runs `ensureDemoSeed()` a second time and verifies counts do not increase.
-
-Config unit coverage must verify the non-production and production defaults for `DEMO_SEED_ENABLED`.

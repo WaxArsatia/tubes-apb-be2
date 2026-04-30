@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an env-gated, boot-time demo account seed with public dummy credentials and rich finance data.
+**Goal:** Add an unconditional boot-time demo account seed with public dummy credentials and rich finance data.
 
-**Architecture:** Configuration owns the `DEMO_SEED_ENABLED` gate, startup calls the seed after migrations, and a focused `src/db/seed.ts` module owns idempotent account/data creation. Tests cover config defaults, login-ready seeded data, endpoint-visible dummy data, and idempotency.
+**Architecture:** Startup calls the seed after migrations, and a focused `src/db/seed.ts` module owns idempotent account/data creation. Tests cover login-ready seeded data, endpoint-visible dummy data, and idempotency.
 
 **Tech Stack:** Bun, TypeScript, Hono, Postgres, Drizzle schema/migrator, `postgres` tagged SQL, Bun test.
 
@@ -12,47 +12,41 @@
 
 ## File Structure
 
-- Modify `src/config.ts`: parse `DEMO_SEED_ENABLED` and expose `demoSeedEnabled`.
-- Create `src/db/seed.ts`: define demo credentials, seed data arrays, and `ensureDemoSeed(config)`.
-- Modify `src/index.ts`: call `ensureDemoSeed(config)` after migrations when enabled.
+- Modify `src/config.ts`: keep normal app config without a demo seed gate.
+- Create `src/db/seed.ts`: define demo credentials, seed data arrays, and `ensureDemoSeed()`.
+- Modify `src/index.ts`: call `ensureDemoSeed()` after migrations.
 - Modify `tests/helpers/app.ts`: expose helpers to count demo records if needed by tests.
-- Modify `tests/unit/config.test.ts`: test demo seed default and explicit env behavior.
+- Modify `tests/unit/config.test.ts`: keep config tests focused on remaining config behavior.
 - Create `tests/integration/demo-seed.test.ts`: test login, seeded API data, and idempotency.
 - Modify `package.json`: include the new integration test in `test:integration`.
 
-## Task 1: Config Gate
+## Task 1: Remove Config Gate
 
 **Files:**
 - Modify: `src/config.ts`
 - Test: `tests/unit/config.test.ts`
 
-- [x] Step 1: Add failing config tests for `demoSeedEnabled`.
+- [x] Step 1: Remove config tests for `demoSeedEnabled`.
 
-Add tests that assert:
+Remove assertions that reference:
 
 ```ts
-expect(loadConfig({ NODE_ENV: 'development' }).demoSeedEnabled).toBe(true)
-expect(loadConfig({ NODE_ENV: 'test' }).demoSeedEnabled).toBe(true)
-expect(loadConfig(validProdEnv).demoSeedEnabled).toBe(false)
-expect(loadConfig({ ...validProdEnv, DEMO_SEED_ENABLED: 'true' }).demoSeedEnabled).toBe(true)
-expect(loadConfig({ NODE_ENV: 'development', DEMO_SEED_ENABLED: 'false' }).demoSeedEnabled).toBe(false)
+demoSeedEnabled
+DEMO_SEED_ENABLED
 ```
 
 - [x] Step 2: Run `bun test tests/unit/config.test.ts`.
 
-Expected: FAIL because `demoSeedEnabled` does not exist.
+Expected: PASS.
 
 - [x] Step 3: Update `src/config.ts`.
 
-Add `DEMO_SEED_ENABLED: z.string().optional()` and compute:
+Remove:
 
 ```ts
-const demoSeedEnabled = env.DEMO_SEED_ENABLED
-  ? env.DEMO_SEED_ENABLED === 'true'
-  : !isProduction
+DEMO_SEED_ENABLED
+demoSeedEnabled
 ```
-
-Return `demoSeedEnabled` in `loadConfig()`.
 
 - [x] Step 4: Run `bun test tests/unit/config.test.ts`.
 
@@ -66,7 +60,7 @@ Expected: PASS.
 
 - [x] Step 1: Add failing integration tests.
 
-Tests must reset/migrate the DB, call `ensureDemoSeed({ ...testConfig, demoSeedEnabled: true })`, log in with `demo@finu.local` / `password123`, assert non-empty `/categories`, `/transactions`, `/savings`, and `/activities/recent`, then call `ensureDemoSeed()` again and assert counts remain unchanged.
+Tests must reset/migrate the DB, call `ensureDemoSeed()`, log in with `demo@finu.local` / `password123`, assert non-empty `/categories`, `/transactions`, `/savings`, and `/activities/recent`, then call `ensureDemoSeed()` again and assert counts remain unchanged.
 
 - [x] Step 2: Run `NODE_ENV=test AUTO_MIGRATE=true DATABASE_URL=postgres://finu:finu@localhost:5433/finu bun test tests/integration/demo-seed.test.ts`.
 
@@ -79,10 +73,10 @@ Create:
 ```ts
 export const demoSeedEmail = 'demo@finu.local'
 export const demoSeedPassword = 'password123'
-export async function ensureDemoSeed(config: Pick<Config, 'demoSeedEnabled'>) { ... }
+export async function ensureDemoSeed() { ... }
 ```
 
-Use `findUserByEmail(demoSeedEmail)` for idempotency. If disabled or existing, return. Otherwise insert the user, categories, general income, savings, and transactions inside `sql.begin()`. Use `hashValue(demoSeedPassword)` for the password.
+Use `findUserByEmail(demoSeedEmail)` for idempotency. If the account exists, return. Otherwise insert the user, categories, general income, savings, and transactions inside `sql.begin()`. Use `hashValue(demoSeedPassword)` for the password.
 
 - [x] Step 4: Run the demo seed integration test.
 
@@ -101,7 +95,11 @@ Expected: PASS.
 await ensureDemoSeed(config)
 ```
 
-The function itself handles the env gate, so startup code stays simple.
+Change it to:
+
+```ts
+await ensureDemoSeed()
+```
 
 - [x] Step 3: Run `bun run typecheck`.
 
@@ -129,11 +127,11 @@ Expected: all PASS.
 
 ```bash
 git add src/config.ts src/index.ts src/db/seed.ts tests/unit/config.test.ts tests/integration/demo-seed.test.ts package.json docs/superpowers/plans/2026-04-30-demo-seed-account.md
-git commit -m "feat: add env-gated demo seed account"
+git commit -m "feat: make demo seed unconditional"
 ```
 
 ## Self-Review
 
-- Spec coverage: configuration gate, boot execution, idempotency, dummy data, credentials, and tests are covered.
+- Spec coverage: unconditional boot execution, idempotency, dummy data, credentials, and tests are covered.
 - Placeholder scan: no TBD/TODO/fill-in placeholders are present.
-- Type consistency: `demoSeedEnabled`, `ensureDemoSeed`, `demoSeedEmail`, and `demoSeedPassword` are consistently named.
+- Type consistency: `ensureDemoSeed`, `demoSeedEmail`, and `demoSeedPassword` are consistently named.

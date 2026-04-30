@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
 import { demoSeedEmail, demoSeedPassword, ensureDemoSeed } from '../../src/db/seed'
-import { authHeaders, closeDatabase, json, prepareDatabase, request, testConfig } from '../helpers/app'
+import { authHeaders, closeDatabase, json, prepareDatabase, request } from '../helpers/app'
 import { sql } from '../../src/db/client'
 
 beforeEach(prepareDatabase)
@@ -29,9 +29,7 @@ async function demoRecordCounts() {
 
 describe('demo seed integration', () => {
   test('creates a login-ready public demo account with endpoint-visible data once', async () => {
-    const seedConfig = { ...testConfig, demoSeedEnabled: true }
-
-    await ensureDemoSeed(seedConfig)
+    await ensureDemoSeed()
 
     const accessToken = await loginAsDemo()
     const categories = await json(await request('/categories', { headers: authHeaders(accessToken) }))
@@ -45,7 +43,7 @@ describe('demo seed integration', () => {
     expect(savings.data.length).toBeGreaterThanOrEqual(4)
     expect(activities.data.length).toBeGreaterThan(0)
 
-    await ensureDemoSeed(seedConfig)
+    await ensureDemoSeed()
 
     expect(await demoRecordCounts()).toEqual(firstCounts)
   })

@@ -8,7 +8,7 @@ const config = loadConfig()
 if (config.autoMigrate) {
   await ensureSchema()
 }
-await ensureDemoSeed(config)
+await ensureDemoSeed()
 
 const app = createApp(config)
 
