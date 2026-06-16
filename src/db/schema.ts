@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar, date } from 'drizzle-orm/pg-core'
+import { boolean, doublePrecision, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar, date } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
 export const categoryType = pgEnum('category_type', ['expense', 'saving'])
@@ -64,6 +64,9 @@ export const transactions = pgTable('transactions', {
   categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
   date: date('date').notNull(),
   note: text('note'),
+  locationLatitude: doublePrecision('location_latitude'),
+  locationLongitude: doublePrecision('location_longitude'),
+  locationSource: varchar('location_source', { length: 20 }),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   restoreExpiresAt: timestamp('restore_expires_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -17,11 +17,20 @@ type TxRow = {
   category_id: string | null
   date: string
   note: string | null
+  location_latitude: number | null
+  location_longitude: number | null
+  location_source: 'gps' | 'manual' | null
   deleted_at: Date | null
   restore_expires_at: Date | null
   created_at: Date
   updated_at: Date
 }
+
+const locationSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  source: z.enum(['gps', 'manual']),
+})
 
 const createSchema = z.object({
   name: z.string().trim().max(160).optional().default(''),
@@ -29,8 +38,12 @@ const createSchema = z.object({
   categoryId: uuidSchema,
   date: dateOnlySchema,
   note: z.string().max(1000).nullish(),
+  location: locationSchema.nullish(),
 })
-const updateSchema = createSchema.partial().extend({ categoryId: uuidSchema.optional() })
+const updateSchema = createSchema.partial().extend({
+  categoryId: uuidSchema.optional(),
+  location: locationSchema.nullish(),
+})
 
 function txDto(row: TxRow, category?: CategoryRow | null) {
   return {
@@ -41,6 +54,13 @@ function txDto(row: TxRow, category?: CategoryRow | null) {
     category: categoryDto(category ?? null),
     date: row.date,
     note: row.note,
+    location: row.location_latitude == null || row.location_longitude == null || row.location_source == null
+      ? null
+      : {
+          latitude: row.location_latitude,
+          longitude: row.location_longitude,
+          source: row.location_source,
+        },
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -111,8 +131,18 @@ transactionRoutes.post('/', async (c) => {
   const name = input.name.trim() || category.name
   const warnings = await budgetWarning(c.get('userId'), input.categoryId, input.date, input.amount)
   const rows = await sql<TxRow[]>`
-    insert into transactions (user_id, name, amount, category_id, date, note)
-    values (${c.get('userId')}, ${name}, ${input.amount}, ${input.categoryId}, ${input.date}, ${input.note ?? null})
+    insert into transactions (user_id, name, amount, category_id, date, note, location_latitude, location_longitude, location_source)
+    values (
+      ${c.get('userId')},
+      ${name},
+      ${input.amount},
+      ${input.categoryId},
+      ${input.date},
+      ${input.note ?? null},
+      ${input.location?.latitude ?? null},
+      ${input.location?.longitude ?? null},
+      ${input.location?.source ?? null}
+    )
     returning *
   `
   return ok(c, txDto(rows[0], category), 'Transaction created successfully', undefined, warnings, 201)
@@ -137,8 +167,27 @@ transactionRoutes.patch('/:id', async (c) => {
   const date = input.date ?? current.date
   const name = input.name !== undefined ? (input.name.trim() || category.name) : current.name
   const warnings = await budgetWarning(c.get('userId'), categoryId, date, amount, id)
+  const hasLocationPatch = Object.prototype.hasOwnProperty.call(input, 'location')
+  const nextLocation = hasLocationPatch
+    ? input.location ?? null
+    : current.location_latitude == null || current.location_longitude == null || current.location_source == null
+      ? null
+      : {
+          latitude: current.location_latitude,
+          longitude: current.location_longitude,
+          source: current.location_source,
+        }
   const rows = await sql<TxRow[]>`
-    update transactions set name = ${name}, amount = ${amount}, category_id = ${categoryId}, date = ${date}, note = ${input.note ?? current.note}, updated_at = now()
+    update transactions set
+      name = ${name},
+      amount = ${amount},
+      category_id = ${categoryId},
+      date = ${date},
+      note = ${input.note ?? current.note},
+      location_latitude = ${nextLocation?.latitude ?? null},
+      location_longitude = ${nextLocation?.longitude ?? null},
+      location_source = ${nextLocation?.source ?? null},
+      updated_at = now()
     where id = ${id} and user_id = ${c.get('userId')}
     returning *
   `
