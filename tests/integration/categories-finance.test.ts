@@ -68,6 +68,86 @@ describe('categories and finance integration', () => {
     expect(list.meta.total).toBe(2)
   })
 
+  test('stores optional transaction location and allows clearing it', async () => {
+    const { accessToken } = await registerUser('tx-location@example.com')
+    await createSavingIncome(accessToken)
+    const category = await createCategory(accessToken, {
+      type: 'expense',
+      name: 'Food',
+      iconKey: 'food',
+      monthlyBudget: 100_000,
+    })
+
+    const createRes = await request('/transactions', {
+      method: 'POST',
+      headers: authHeaders(accessToken, { 'content-type': 'application/json' }),
+      body: JSON.stringify({
+        name: 'Lunch',
+        amount: 35_000,
+        categoryId: category.data.id,
+        date: '2026-04-10',
+        location: { latitude: -6.2, longitude: 106.816666, source: 'gps' },
+      }),
+    })
+    const created = await json(createRes)
+    expect(createRes.status).toBe(201)
+    expect(created.data.location).toEqual({
+      latitude: -6.2,
+      longitude: 106.816666,
+      source: 'gps',
+    })
+
+    const updateRes = await request(`/transactions/${created.data.id}`, {
+      method: 'PATCH',
+      headers: authHeaders(accessToken, { 'content-type': 'application/json' }),
+      body: JSON.stringify({
+        location: { latitude: -6.175392, longitude: 106.827153, source: 'manual' },
+      }),
+    })
+    const updated = await json(updateRes)
+    expect(updateRes.status).toBe(200)
+    expect(updated.data.location).toEqual({
+      latitude: -6.175392,
+      longitude: 106.827153,
+      source: 'manual',
+    })
+
+    const clearRes = await request(`/transactions/${created.data.id}`, {
+      method: 'PATCH',
+      headers: authHeaders(accessToken, { 'content-type': 'application/json' }),
+      body: JSON.stringify({ location: null }),
+    })
+    const cleared = await json(clearRes)
+    expect(clearRes.status).toBe(200)
+    expect(cleared.data.location).toBeNull()
+  })
+
+  test('rejects invalid transaction coordinates', async () => {
+    const { accessToken } = await registerUser('tx-location-invalid@example.com')
+    await createSavingIncome(accessToken)
+    const category = await createCategory(accessToken, {
+      type: 'expense',
+      name: 'Transport',
+      iconKey: 'bus',
+      monthlyBudget: 100_000,
+    })
+
+    const res = await request('/transactions', {
+      method: 'POST',
+      headers: authHeaders(accessToken, { 'content-type': 'application/json' }),
+      body: JSON.stringify({
+        name: 'Taxi',
+        amount: 50_000,
+        categoryId: category.data.id,
+        date: '2026-04-11',
+        location: { latitude: -91, longitude: 106.8, source: 'gps' },
+      }),
+    })
+    const body = await json(res)
+    expect(res.status).toBe(400)
+    expect(body.error.code).toBe('VALIDATION_ERROR')
+  })
+
   test('validates saving category rules and returns target warning', async () => {
     const { accessToken } = await registerUser('saving@example.com')
     const generalIncome = await request('/savings', {
