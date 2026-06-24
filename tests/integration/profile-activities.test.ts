@@ -33,6 +33,26 @@ describe('profile, settings, uploads, and activities', () => {
     const badRes = await request('/profile/photo', { method: 'POST', headers: authHeaders(accessToken), body: bad })
     expect(badRes.status).toBe(400)
 
+    const boundary = '----profile-photo-test'
+    const octetStreamJpegHeader = `${[
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="photo"; filename="image_picker_cache"',
+      'Content-Type: application/octet-stream',
+      '',
+    ].join('\r\n')}\r\n`
+    const octetStreamJpegFooter = ['', `--${boundary}--`, ''].join('\r\n')
+    const octetStreamJpeg = new Blob([
+      octetStreamJpegHeader,
+      new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]),
+      octetStreamJpegFooter,
+    ])
+    const octetStreamJpegRes = await request('/profile/photo', {
+      method: 'POST',
+      headers: authHeaders(accessToken, { 'content-type': `multipart/form-data; boundary=${boundary}` }),
+      body: octetStreamJpeg,
+    })
+    expect(octetStreamJpegRes.status).toBe(200)
+
     const good = new FormData()
     good.set('photo', new File([new Uint8Array([137, 80, 78, 71])], 'photo.png', { type: 'image/png' }))
     const goodRes = await request('/profile/photo', { method: 'POST', headers: authHeaders(accessToken), body: good })

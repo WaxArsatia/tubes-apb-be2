@@ -12,6 +12,36 @@ import { findUserById, userDto } from '../auth/service'
 
 const profileSchema = z.object({ name: z.string().trim().min(1).max(120) })
 const notificationsSchema = z.object({ budgetNotificationEnabled: z.boolean() })
+const imageTypes = ['image/jpeg', 'image/png'] as const
+type ProfilePhotoType = (typeof imageTypes)[number]
+
+function isJpeg(bytes: Uint8Array) {
+  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+}
+
+function isPng(bytes: Uint8Array) {
+  return (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  )
+}
+
+async function resolveProfilePhotoType(photo: File): Promise<ProfilePhotoType | null> {
+  if (imageTypes.includes(photo.type as ProfilePhotoType)) return photo.type as ProfilePhotoType
+  if (photo.type && photo.type !== 'application/octet-stream') return null
+
+  const bytes = new Uint8Array(await photo.slice(0, 8).arrayBuffer())
+  if (isJpeg(bytes)) return 'image/jpeg'
+  if (isPng(bytes)) return 'image/png'
+  return null
+}
 
 export const profileRoutes = new Hono<AppEnv>()
 profileRoutes.use('*', requireAuth)
@@ -34,10 +64,11 @@ profileRoutes.post('/photo', async (c) => {
   const body = await c.req.parseBody()
   const photo = body.photo
   if (!(photo instanceof File)) throw new AppError('VALIDATION_ERROR', 'Photo file is required', 400)
-  if (!['image/jpeg', 'image/png'].includes(photo.type)) throw new AppError('VALIDATION_ERROR', 'Photo must be JPEG or PNG', 400)
   if (photo.size > 5 * 1024 * 1024) throw new AppError('VALIDATION_ERROR', 'Photo must be at most 5 MB', 400)
+  const photoType = await resolveProfilePhotoType(photo)
+  if (!photoType) throw new AppError('VALIDATION_ERROR', 'Photo must be JPEG or PNG', 400)
 
-  const ext = photo.type === 'image/png' ? 'png' : 'jpg'
+  const ext = photoType === 'image/png' ? 'png' : 'jpg'
   const fileName = `${c.get('userId')}-${Date.now()}.${ext}`
   const config = c.get('config')
   const relativeDir = join(config.uploadDir, 'profile-photos')
