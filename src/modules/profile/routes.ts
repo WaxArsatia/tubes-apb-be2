@@ -75,7 +75,7 @@ profileRoutes.post('/photo', async (c) => {
   await mkdir(relativeDir, { recursive: true })
   await Bun.write(join(relativeDir, fileName), photo)
 
-  const url = `/uploads/profile-photos/${fileName}`
+  const url = `${config.publicBaseUrl}/uploads/profile-photos/${fileName}`
   const rows = await sql<any[]>`update users set profile_photo_url = ${url}, updated_at = now() where id = ${c.get('userId')} returning *`
   return ok(c, userDto(rows[0]), 'Profile photo uploaded successfully')
 })

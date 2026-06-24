@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
-import { authHeaders, closeDatabase, createCategory, createSavingIncome, json, prepareDatabase, registerUser, request } from '../helpers/app'
+import { authHeaders, closeDatabase, createCategory, createSavingIncome, json, prepareDatabase, registerUser, request, testConfig } from '../helpers/app'
 
 beforeEach(prepareDatabase)
 afterAll(closeDatabase)
@@ -58,7 +58,7 @@ describe('profile, settings, uploads, and activities', () => {
     const goodRes = await request('/profile/photo', { method: 'POST', headers: authHeaders(accessToken), body: good })
     const goodBody = await json(goodRes)
     expect(goodRes.status).toBe(200)
-    expect(goodBody.data.profilePhotoUrl).toContain('/uploads/profile-photos/')
+    expect(goodBody.data.profilePhotoUrl).toStartWith(`${testConfig.publicBaseUrl}/uploads/profile-photos/`)
 
     const uploadedPhotoRes = await request(goodBody.data.profilePhotoUrl)
     expect(uploadedPhotoRes.status).toBe(200)
