@@ -65,8 +65,14 @@ categoryRoutes.patch('/:id', async (c) => {
   const input = await jsonBody(c, updateSchema)
   const name = input.name ?? category.name
   const iconKey = input.iconKey ?? category.icon_key
-  const monthlyBudget = category.type === 'expense' ? input.monthlyBudget ?? category.monthly_budget : null
-  const savingTarget = category.type === 'saving' ? input.savingTarget ?? category.saving_target : null
+  const hasMonthlyBudgetPatch = Object.prototype.hasOwnProperty.call(input, 'monthlyBudget')
+  const hasSavingTargetPatch = Object.prototype.hasOwnProperty.call(input, 'savingTarget')
+  const monthlyBudget = category.type === 'expense'
+    ? hasMonthlyBudgetPatch ? input.monthlyBudget ?? null : category.monthly_budget
+    : null
+  const savingTarget = category.type === 'saving'
+    ? hasSavingTargetPatch ? input.savingTarget ?? null : category.saving_target
+    : null
   await assertCategoryRules(c.get('userId'), category.type, monthlyBudget, savingTarget)
   await assertUniqueName(c.get('userId'), category.type, name, id)
   const rows = await sql<CategoryRow[]>`

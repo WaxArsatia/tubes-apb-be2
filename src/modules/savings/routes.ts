@@ -91,6 +91,15 @@ async function withCategory(row: SavingRow) {
   return savingDto(row, categories[0] ?? null)
 }
 
+async function withBatchedCategories(rows: SavingRow[]) {
+  const categoryIds = [...new Set(rows.map((row) => row.category_id).filter((id): id is string => id !== null))]
+  const categories = categoryIds.length
+    ? await sql<CategoryRow[]>`select * from categories where id in ${sql(categoryIds)}`
+    : []
+  const categoryById = new Map(categories.map((category) => [category.id, category]))
+  return rows.map((row) => savingDto(row, row.category_id ? categoryById.get(row.category_id) ?? null : null))
+}
+
 export const savingRoutes = new Hono<AppEnv>()
 savingRoutes.use('*', requireAuth)
 
@@ -113,7 +122,7 @@ savingRoutes.get('/', async (c) => {
       ${q.month ? sql`and to_char(date, 'YYYY-MM') = ${q.month}` : sql``}
       ${q.categoryId ? sql`and category_id = ${q.categoryId}` : sql``}
   `
-  return ok(c, await Promise.all(rows.map(withCategory)), 'Savings retrieved successfully', { page: q.page, limit: q.limit, total: totals[0]?.total ?? 0 })
+  return ok(c, await withBatchedCategories(rows), 'Savings retrieved successfully', { page: q.page, limit: q.limit, total: totals[0]?.total ?? 0 })
 })
 
 savingRoutes.post('/', async (c) => {
@@ -147,9 +156,10 @@ savingRoutes.patch('/:id', async (c) => {
   const amount = input.amount ?? current.amount
   const date = input.date ?? current.date
   const name = input.name !== undefined ? (input.name.trim() || (type === 'general_income' ? 'Pemasukan Umum' : category!.name)) : current.name
+  const note = Object.prototype.hasOwnProperty.call(input, 'note') ? input.note ?? null : current.note
   const warnings = await targetWarning(c.get('userId'), category, amount, id)
   const rows = await sql<SavingRow[]>`
-    update savings set type = ${type}, name = ${name}, amount = ${amount}, category_id = ${type === 'saving' ? categoryId : null}, date = ${date}, note = ${input.note ?? current.note}, updated_at = now()
+    update savings set type = ${type}, name = ${name}, amount = ${amount}, category_id = ${type === 'saving' ? categoryId : null}, date = ${date}, note = ${note}, updated_at = now()
     where id = ${id} and user_id = ${c.get('userId')}
     returning *
   `

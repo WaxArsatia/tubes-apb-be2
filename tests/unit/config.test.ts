@@ -15,6 +15,7 @@ const completeProductionEnv = {
   UPLOAD_DIR: '/app/uploads',
   PUBLIC_BASE_URL: 'https://api.example.com',
   AUTO_MIGRATE: 'true',
+  ENABLE_DEMO_SEED: 'false',
 }
 
 describe('config validation', () => {
@@ -22,6 +23,7 @@ describe('config validation', () => {
     const config = loadConfig({})
     expect(config.nodeEnv).toBe('development')
     expect(config.autoMigrate).toBe(true)
+    expect(config.enableDemoSeed).toBe(false)
   })
 
   test('rejects unsafe production defaults', () => {
@@ -32,5 +34,11 @@ describe('config validation', () => {
     const config = loadConfig(completeProductionEnv)
     expect(config.nodeEnv).toBe('production')
     expect(config.publicBaseUrl).toBe('https://api.example.com')
+    expect(config.enableDemoSeed).toBe(false)
+  })
+
+  test('enables demo seed only when explicitly requested', () => {
+    const config = loadConfig({ ENABLE_DEMO_SEED: 'true' })
+    expect(config.enableDemoSeed).toBe(true)
   })
 })

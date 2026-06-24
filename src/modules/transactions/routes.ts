@@ -101,6 +101,15 @@ async function withCategory(row: TxRow) {
   return txDto(row, categories[0] ?? null)
 }
 
+async function withBatchedCategories(rows: TxRow[]) {
+  const categoryIds = [...new Set(rows.map((row) => row.category_id).filter((id): id is string => id !== null))]
+  const categories = categoryIds.length
+    ? await sql<CategoryRow[]>`select * from categories where id in ${sql(categoryIds)}`
+    : []
+  const categoryById = new Map(categories.map((category) => [category.id, category]))
+  return rows.map((row) => txDto(row, row.category_id ? categoryById.get(row.category_id) ?? null : null))
+}
+
 export const transactionRoutes = new Hono<AppEnv>()
 transactionRoutes.use('*', requireAuth)
 
@@ -121,7 +130,7 @@ transactionRoutes.get('/', async (c) => {
       ${q.month ? sql`and to_char(date, 'YYYY-MM') = ${q.month}` : sql``}
       ${q.categoryId ? sql`and category_id = ${q.categoryId}` : sql``}
   `
-  return ok(c, await Promise.all(rows.map(withCategory)), 'Transactions retrieved successfully', { page: q.page, limit: q.limit, total: totals[0]?.total ?? 0 })
+  return ok(c, await withBatchedCategories(rows), 'Transactions retrieved successfully', { page: q.page, limit: q.limit, total: totals[0]?.total ?? 0 })
 })
 
 transactionRoutes.post('/', async (c) => {
@@ -166,6 +175,7 @@ transactionRoutes.patch('/:id', async (c) => {
   const amount = input.amount ?? current.amount
   const date = input.date ?? current.date
   const name = input.name !== undefined ? (input.name.trim() || category.name) : current.name
+  const note = Object.prototype.hasOwnProperty.call(input, 'note') ? input.note ?? null : current.note
   const warnings = await budgetWarning(c.get('userId'), categoryId, date, amount, id)
   const hasLocationPatch = Object.prototype.hasOwnProperty.call(input, 'location')
   const nextLocation = hasLocationPatch
@@ -183,7 +193,7 @@ transactionRoutes.patch('/:id', async (c) => {
       amount = ${amount},
       category_id = ${categoryId},
       date = ${date},
-      note = ${input.note ?? current.note},
+      note = ${note},
       location_latitude = ${nextLocation?.latitude ?? null},
       location_longitude = ${nextLocation?.longitude ?? null},
       location_source = ${nextLocation?.source ?? null},

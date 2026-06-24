@@ -19,6 +19,7 @@ export const testConfig: Config = {
   uploadDir: 'uploads-test',
   publicBaseUrl: 'http://localhost:3000',
   autoMigrate: true,
+  enableDemoSeed: false,
 }
 
 export const app = createApp(testConfig)

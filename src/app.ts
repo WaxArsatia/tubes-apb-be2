@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { serveStatic } from 'hono/bun'
+import { isAbsolute, relative, resolve } from 'node:path'
 import type { Config } from './config'
 import { handleError } from './http/errors'
 import { requestLogger } from './http/request-logger'
@@ -27,7 +27,27 @@ export function createApp(config: Config) {
   })
   app.use('*', requestLogger())
   app.use('*', cors())
-  app.use('/uploads/*', serveStatic({ root: './' }))
+  app.get('/uploads/*', async (c) => {
+    const pathname = new URL(c.req.url).pathname
+    const encodedSuffix = pathname.replace(/^\/uploads\/?/, '')
+    if (!encodedSuffix) return c.notFound()
+
+    let suffix: string
+    try {
+      suffix = decodeURIComponent(encodedSuffix)
+    } catch {
+      return c.notFound()
+    }
+
+    const uploadRoot = resolve(config.uploadDir)
+    const filePath = resolve(uploadRoot, suffix)
+    const relativePath = relative(uploadRoot, filePath)
+    if (relativePath.startsWith('..') || isAbsolute(relativePath)) return c.notFound()
+
+    const file = Bun.file(filePath)
+    if (!(await file.exists())) return c.notFound()
+    return new Response(file)
+  })
 
   app.route('/auth', authRoutes)
   app.route('/profile', profileRoutes)

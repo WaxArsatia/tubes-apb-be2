@@ -14,6 +14,7 @@ const envSchema = z.object({
   UPLOAD_DIR: z.string().default('uploads'),
   PUBLIC_BASE_URL: z.string().default('http://localhost:3000'),
   AUTO_MIGRATE: z.string().default('true'),
+  ENABLE_DEMO_SEED: z.string().default('false'),
 })
 
 export type Config = ReturnType<typeof loadConfig>
@@ -61,5 +62,6 @@ export function loadConfig(source: RawEnv = process.env) {
     uploadDir: env.UPLOAD_DIR,
     publicBaseUrl: env.PUBLIC_BASE_URL.replace(/\/$/, ''),
     autoMigrate: env.AUTO_MIGRATE === 'true',
+    enableDemoSeed: env.ENABLE_DEMO_SEED === 'true',
   }
 }

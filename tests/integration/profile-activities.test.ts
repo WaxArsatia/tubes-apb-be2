@@ -39,6 +39,9 @@ describe('profile, settings, uploads, and activities', () => {
     const goodBody = await json(goodRes)
     expect(goodRes.status).toBe(200)
     expect(goodBody.data.profilePhotoUrl).toContain('/uploads/profile-photos/')
+
+    const uploadedPhotoRes = await request(goodBody.data.profilePhotoUrl)
+    expect(uploadedPhotoRes.status).toBe(200)
   })
 
   test('returns recent activities newest first', async () => {

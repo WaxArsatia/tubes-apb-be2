@@ -66,6 +66,12 @@ describe('categories and finance integration', () => {
 
     const list = await json(await request(`/transactions?month=2026-04&categoryId=${category.data.id}`, { headers: authHeaders(accessToken) }))
     expect(list.meta.total).toBe(2)
+    expect(list.data[0].categoryId).toBe(category.data.id)
+    expect(list.data[0].category).toMatchObject({
+      id: category.data.id,
+      name: 'Transport',
+      type: 'expense',
+    })
   })
 
   test('stores optional transaction location and allows clearing it', async () => {
@@ -122,6 +128,92 @@ describe('categories and finance integration', () => {
     expect(cleared.data.location).toBeNull()
   })
 
+  test('clears nullable category fields and finance notes with explicit null', async () => {
+    const { accessToken } = await registerUser('nullable-patch@example.com')
+    await createSavingIncome(accessToken)
+
+    const expenseCategory = await createCategory(accessToken, {
+      type: 'expense',
+      name: 'Groceries',
+      iconKey: 'cart',
+      monthlyBudget: 250_000,
+    })
+    const clearExpense = await request(`/categories/${expenseCategory.data.id}`, {
+      method: 'PATCH',
+      headers: authHeaders(accessToken, { 'content-type': 'application/json' }),
+      body: JSON.stringify({ monthlyBudget: null }),
+    })
+    const clearedExpense = await json(clearExpense)
+    expect(clearExpense.status).toBe(200)
+    expect(clearedExpense.data.monthlyBudget).toBeNull()
+    const fetchedExpense = await json(await request(`/categories/${expenseCategory.data.id}`, { headers: authHeaders(accessToken) }))
+    expect(fetchedExpense.data.monthlyBudget).toBeNull()
+
+    const savingCategory = await createCategory(accessToken, {
+      type: 'saving',
+      name: 'House',
+      iconKey: 'home',
+      savingTarget: 5_000_000,
+    })
+    const clearSavingCategory = await request(`/categories/${savingCategory.data.id}`, {
+      method: 'PATCH',
+      headers: authHeaders(accessToken, { 'content-type': 'application/json' }),
+      body: JSON.stringify({ savingTarget: null }),
+    })
+    const clearedSavingCategory = await json(clearSavingCategory)
+    expect(clearSavingCategory.status).toBe(200)
+    expect(clearedSavingCategory.data.savingTarget).toBeNull()
+    const fetchedSavingCategory = await json(await request(`/categories/${savingCategory.data.id}`, { headers: authHeaders(accessToken) }))
+    expect(fetchedSavingCategory.data.savingTarget).toBeNull()
+
+    const txRes = await request('/transactions', {
+      method: 'POST',
+      headers: authHeaders(accessToken, { 'content-type': 'application/json' }),
+      body: JSON.stringify({
+        name: 'Groceries',
+        amount: 75_000,
+        categoryId: expenseCategory.data.id,
+        date: '2026-04-12',
+        note: 'with note',
+      }),
+    })
+    const tx = await json(txRes)
+    const clearTxNote = await request(`/transactions/${tx.data.id}`, {
+      method: 'PATCH',
+      headers: authHeaders(accessToken, { 'content-type': 'application/json' }),
+      body: JSON.stringify({ note: null }),
+    })
+    const clearedTxNote = await json(clearTxNote)
+    expect(clearTxNote.status).toBe(200)
+    expect(clearedTxNote.data.note).toBeNull()
+    const fetchedTx = await json(await request(`/transactions/${tx.data.id}`, { headers: authHeaders(accessToken) }))
+    expect(fetchedTx.data.note).toBeNull()
+
+    const savingRes = await request('/savings', {
+      method: 'POST',
+      headers: authHeaders(accessToken, { 'content-type': 'application/json' }),
+      body: JSON.stringify({
+        type: 'saving',
+        name: 'House',
+        amount: 100_000,
+        categoryId: savingCategory.data.id,
+        date: '2026-04-13',
+        note: 'with note',
+      }),
+    })
+    const saving = await json(savingRes)
+    const clearSavingNote = await request(`/savings/${saving.data.id}`, {
+      method: 'PATCH',
+      headers: authHeaders(accessToken, { 'content-type': 'application/json' }),
+      body: JSON.stringify({ note: null }),
+    })
+    const clearedSavingNote = await json(clearSavingNote)
+    expect(clearSavingNote.status).toBe(200)
+    expect(clearedSavingNote.data.note).toBeNull()
+    const fetchedSaving = await json(await request(`/savings/${saving.data.id}`, { headers: authHeaders(accessToken) }))
+    expect(fetchedSaving.data.note).toBeNull()
+  })
+
   test('rejects invalid transaction coordinates', async () => {
     const { accessToken } = await registerUser('tx-location-invalid@example.com')
     await createSavingIncome(accessToken)
@@ -175,6 +267,12 @@ describe('categories and finance integration', () => {
 
     const list = await json(await request(`/savings?type=saving&month=2026-04&categoryId=${category.data.id}`, { headers: authHeaders(accessToken) }))
     expect(list.meta.total).toBe(1)
+    expect(list.data[0].categoryId).toBe(category.data.id)
+    expect(list.data[0].category).toMatchObject({
+      id: category.data.id,
+      name: 'Emergency',
+      type: 'saving',
+    })
 
     expect((await request(`/savings/${savingBody.data.id}`, { method: 'DELETE', headers: authHeaders(accessToken) })).status).toBe(200)
     expect((await request(`/savings/${savingBody.data.id}/restore`, { method: 'POST', headers: authHeaders(accessToken) })).status).toBe(200)
