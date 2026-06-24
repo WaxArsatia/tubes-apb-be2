@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/bun'
 import type { Config } from './config'
 import { handleError } from './http/errors'
+import { requestLogger } from './http/request-logger'
 import { authRoutes } from './modules/auth/routes'
 import { profileRoutes } from './modules/profile/routes'
 import { categoryRoutes } from './modules/categories/routes'
@@ -24,6 +25,7 @@ export function createApp(config: Config) {
     c.set('config', config)
     await next()
   })
+  app.use('*', requestLogger())
   app.use('*', cors())
   app.use('/uploads/*', serveStatic({ root: './' }))
 
